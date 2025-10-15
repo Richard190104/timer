@@ -49,7 +49,7 @@ function displayInformation() {
 
     const overlay = document.createElement('div'); overlay.className = 'info-overlay';
     const panel = document.createElement('div'); panel.className = 'info-panel';
-    const title = document.createElement('h3'); title.innerText = 'Zahraj si daco kym cakas pls sak nerobil som to len tak';
+    const title = document.createElement('h4'); title.innerText = 'O nvmkolkocasu tam pise sa ti zobrazi co znamena KJNTSSNP. \n Zahraj si daco kym cakas sak doraz to bude.\n\n Kazdy mesiac ti pridam nejaku hru ktoru musis dohrat v ten mesiac, inak sa ti cakanie predlzi o mesiac. Tieto co tam su teraz su fixne, tie dohravat nemusis to len kym cakas nech sa nenudis. Mesacna sa zobrazi na hlavnej stranke. Zacina sa 1.11 :D. \n\n Also kazdy den (ked budem stihat) budem pridavat dajaky fun text alebo info takze dojdi sa pozriet.';
     const list = document.createElement('div'); list.style.display = 'flex'; list.style.flexDirection = 'column'; list.style.gap = '8px';
     const closeBtn = document.createElement('button'); closeBtn.className = 'btn-small'; closeBtn.innerText = 'Close';
 
@@ -97,4 +97,18 @@ function displayInformation() {
     });
 
     closeBtn.addEventListener('click', () => overlay.remove());
+}
+let audioInstance = new Audio('data/songs/Las Ketchup - Asereje.mp3');
+let isPlaying = false;
+
+function playSong() {
+    document.querySelector('.sound-btn span').innerText = isPlaying ? 'Pusti si pesnicku' : 'Dobra ne? xdddddd';
+    if (!isPlaying) {
+        audioInstance.play();
+        isPlaying = true;
+        audioInstance.onended = () => { isPlaying = false;};
+    } else if (audioInstance) {
+        audioInstance.pause();
+        isPlaying = false;
+    }
 }
