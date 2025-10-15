@@ -86,3 +86,18 @@ body{
 
 .game-controls{ display:flex; gap:8px; justify-content:center; margin-top:12px; }
 .btn-small{ background:#222; color:#fff; padding:6px 10px; border-radius:6px; border:1px solid #444; cursor:pointer; }
+
+/* Task overlay styles (moved from inline in script.js) */
+.task-overlay{ position: fixed; top:0; left:0; width:100vw; height:100vh; background: rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index:9999; }
+.task-panel{ background:#fff; color:#111; padding:24px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.2); display:flex; flex-direction:column; gap:12px; min-width:320px; }
+.task-text{ margin-bottom:8px; }
+.task-input{ width:100%; resize:vertical; }
+.task-btn-row{ display:flex; gap:8px; justify-content:flex-end; }
+
+/* Game menu rows */
+.game-row{ display:flex; justify-content:space-between; align-items:center; padding:6px 0; }
+.game-name{ text-align:left; }
+
+.hidden{ display:none !important; }
+
+.task-result{ background:#111; color:#0f0; padding:8px; border-radius:6px; text-align:left; }
