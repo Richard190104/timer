@@ -28,50 +28,74 @@ fetch("https://timer-backend-24n3.vercel.app/api/hello").then(res => res.json())
                 editorToolbar.className = 'editor-toolbar';
                 const runHint = document.createElement('div'); runHint.innerText = 'Editor'; runHint.style.fontWeight = '600'; runHint.style.color = '#fff';
                 const btnFormat = document.createElement('button'); btnFormat.className = 'toolbar-btn'; btnFormat.innerText = 'Format';
-                const btnTabSize = document.createElement('button'); btnTabSize.className = 'toolbar-btn'; btnTabSize.innerText = 'Tab: 2';
                 const toolbarRight = document.createElement('div'); toolbarRight.className = 'toolbar-right';
-                editorToolbar.appendChild(runHint); editorToolbar.appendChild(btnFormat); toolbarRight.appendChild(btnTabSize); editorToolbar.appendChild(toolbarRight);
+                editorToolbar.appendChild(runHint); editorToolbar.appendChild(btnFormat);  editorToolbar.appendChild(toolbarRight);
 
                 const editorWrap = document.createElement('div'); editorWrap.className = 'editor-wrap';
                 const gutter = document.createElement('div'); gutter.className = 'editor-gutter';
                 const gutterInner = document.createElement('div'); gutter.appendChild(gutterInner);
+                // create a textarea that CodeMirror can enhance; fallback will just use the textarea
                 const textarea = document.createElement('textarea');
                 textarea.className = 'editor task-input'; textarea.rows = 12; textarea.wrap = 'off';
-                textarea.value = data.CommentedText || '';
-                if (data.completed) {
-                    textarea.value = '// táto úloha bola dokončená\n' + textarea.value;
-                }    editorWrap.appendChild(gutter); editorWrap.appendChild(textarea);
+                // accept several possible keys for initial commented text
+                textarea.value = (data.CommentedText + "\n" || '') ;
+                // ensure textarea is focusable in fallback
+                try { textarea.tabIndex = 0; textarea.removeAttribute('disabled'); } catch(e){}
+                if (data.completed) textarea.value = '// táto úloha bola dokončená\n' + textarea.value;
+                editorWrap.appendChild(gutter); editorWrap.appendChild(textarea);
 
-                function updateGutter() {
-                    const lines = (textarea.value.match(/\n/g) || []).length + 1;
+                // append editor elements to panel now so CodeMirror can attach to a textarea in the DOM
+                panel.appendChild(taskText);
+                panel.appendChild(editorToolbar);
+                panel.appendChild(editorWrap);
+
+                // small gutter updater for textarea fallback and for visual parity
+                function updateGutterForText(text) {
+                    const lines = (String(text).match(/\n/g) || []).length + 1;
                     let out = '';
                     for (let i = 1; i <= lines; i++) out += '<div>' + i + '</div>';
                     gutterInner.innerHTML = out;
                 }
-                updateGutter();
+                updateGutterForText(textarea.value);
 
-                textarea.addEventListener('scroll', () => { gutter.scrollTop = textarea.scrollTop; });
-                textarea.addEventListener('input', () => { updateGutter(); resultDiv.innerText = ''; resultDiv.style.color = '#0f0'; });
+                textarea.addEventListener('input', () => { updateGutterForText(textarea.value); });
 
                 let currentTab = 2;
-                textarea.addEventListener('keydown', (e) => {
-                    if (e.key === 'Tab') {
-                        e.preventDefault();
-                        const start = textarea.selectionStart; const end = textarea.selectionEnd;
-                        const spaces = ' '.repeat(currentTab);
-                        textarea.value = textarea.value.substring(0, start) + spaces + textarea.value.substring(end);
-                        textarea.selectionStart = textarea.selectionEnd = start + spaces.length;
-                        updateGutter();
+                btnFormat.addEventListener('click', () => {
+                    const lines = textarea.value.split(/\r?\n/);
+                    const formatted = lines.map(l => l.replace(/\t/g, ' '.repeat(currentTab))).join('\n');
+                    textarea.value = formatted; updateGutterForText(textarea.value);
+                    // if a CodeMirror instance exists, update it as well
+                    if (window.__cmInstance && typeof window.__cmInstance.setValue === 'function') {
+                        window.__cmInstance.setValue(formatted);
                     }
                 });
 
-                btnTabSize.addEventListener('click', () => { currentTab = currentTab === 2 ? 4 : 2; btnTabSize.innerText = 'Tab: ' + currentTab; });
-                btnFormat.addEventListener('click', () => {
-                    // basic formatting: replace tabs with spaces and normalize indentation for blocks
-                    const lines = textarea.value.split(/\r?\n/);
-                    const formatted = lines.map(l => l.replace(/\t/g, ' '.repeat(currentTab))).join('\n');
-                    textarea.value = formatted; updateGutter();
-                });
+                // attach CodeMirror (preloaded in index.html) after modal is appended so fromTextArea can find the textarea in DOM
+                let __localCmInstance = null;
+                function attachPreloadedCodeMirror() {
+                    if (!window.CodeMirror) return;
+                    try {
+                        try { if (window.__cmInstance && typeof window.__cmInstance.toTextArea === 'function') { window.__cmInstance.toTextArea(); window.__cmInstance = null; } } catch(e){}
+                        const cm = window.CodeMirror.fromTextArea(textarea, {
+                            mode: 'javascript', theme: 'material-darker', lineNumbers: true, tabSize: currentTab, indentWithTabs: false
+                        });
+                        __localCmInstance = cm;
+                        window.__cmInstance = cm; // quick global reference for other handlers
+                        cm.on('change', () => { updateGutterForText(cm.getValue()); });
+                        // if CM has no content but textarea does, set it
+                        try { if ((!cm.getValue() || cm.getValue().trim() === '') && textarea.value) cm.setValue(textarea.value); } catch(e){}
+                        try { cm.refresh && cm.refresh(); } catch(e){}
+                        try { cm.setOption && cm.setOption('readOnly', false); } catch(e){}
+                        updateGutterForText(cm.getValue());
+                        try {
+                            const lastLine = cm.lastLine();
+                            cm.setCursor({ line: lastLine, ch: 0 });
+                                try { const sc = (cm.getScrollerElement ? cm.getScrollerElement() : cm.getWrapperElement && cm.getWrapperElement()); if (sc) sc.scrollLeft = 0; } catch(e){}
+                            cm.focus();
+                        } catch(e) { try { cm.focus(); } catch(e){} }
+                    } catch (e) { console.warn('Failed to attach CodeMirror:', e); }
+                }
 
         const btnRow = document.createElement('div');
         btnRow.className = 'task-btn-row';
@@ -87,95 +111,134 @@ fetch("https://timer-backend-24n3.vercel.app/api/hello").then(res => res.json())
         btnRow.appendChild(submitBtn);
         btnRow.appendChild(closeBtn);
 
-    panel.appendChild(taskText);
-    panel.appendChild(editorToolbar);
-    panel.appendChild(editorWrap);
+    // editor already appended above
     const resultDiv = document.createElement('pre');
     resultDiv.className = 'task-result';
     resultDiv.style.whiteSpace = 'pre-wrap';
-    resultDiv.style.maxHeight = '200px';
+    resultDiv.style.maxHeight = '80px';
     resultDiv.style.overflow = 'auto';
     panel.appendChild(resultDiv);
+
+    // helper: append lines with timestamp and optional styling
+    function escapeHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function appendLine(text, kind) {
+        const ts = new Date().toLocaleTimeString();
+        const safe = escapeHtml(text);
+        if (kind === 'error') {
+            resultDiv.innerHTML += `<div class="result-line error" style="color:#ff6b6b">[${ts}] ${safe}</div>`;
+        } else if (kind === 'ok') {
+            resultDiv.innerHTML += `<div class="result-line ok" style="color:#7ee787">[${ts}] ${safe}</div>`;
+        } else {
+            resultDiv.innerHTML += `<div class="result-line info">[${ts}] ${safe}</div>`;
+        }
+        resultDiv.scrollTop = resultDiv.scrollHeight;
+    }
         panel.appendChild(btnRow);
         overlay.appendChild(panel);
-        document.body.appendChild(overlay);
+    document.body.appendChild(overlay);
+    // try to attach preloaded CodeMirror now that the textarea is in the DOM
+    try { attachPreloadedCodeMirror(); } catch(e) {}
 
-        closeBtn.addEventListener('click', () => overlay.remove());
+    // ensure focus and caret placement after editor attached / DOM laid out
+    setTimeout(() => {
+        try {
+            if (window.__cmInstance && typeof window.__cmInstance.getValue === 'function') {
+                const cm = window.__cmInstance;
+                try {
+                    const lastLine = cm.lastLine();
+                    cm.setCursor({ line: lastLine, ch: 0 });
+                        try { const sc = (cm.getScrollerElement ? cm.getScrollerElement() : cm.getWrapperElement && cm.getWrapperElement()); if (sc) sc.scrollLeft = 0; } catch(e){}
+                    cm.focus();
+                } catch (e) { cm.focus && cm.focus(); }
+            } else {
+                textarea.selectionStart = textarea.selectionEnd = 0;
+                textarea.focus();
+                    try { textarea.scrollLeft = 0; } catch(e){}
+            }
+        } catch (e) { /* ignore focus errors */ }
+    }, 60);
+
+        closeBtn.addEventListener('click', () => {
+            // cleanup CodeMirror instance if attached
+            try { if (__localCmInstance && typeof __localCmInstance.toTextArea === 'function') { __localCmInstance.toTextArea(); } if (window.__cmInstance) delete window.__cmInstance; } catch(e){}
+            overlay.remove();
+        });
+        // focus the editor (CodeMirror or textarea) so the user can type immediately
+        setTimeout(() => {
+            try {
+                if (window.__cmInstance && typeof window.__cmInstance.focus === 'function') window.__cmInstance.focus();
+                else textarea.focus();
+            } catch (e) { try { textarea.focus(); } catch(e){} }
+        }, 150);
         submitBtn.addEventListener('click', async () => {
-            const code = textarea.value || '';
-            resultDiv.innerText = '';
             submitBtn.disabled = true;
-
-            let wrapped;
-            try {
-                wrapped = new Function('return (async function(){\n' + code + '\n})()');
-            } catch (compileErr) {
-                const lines = code.split(/\r?\n/);
-                const numbered = lines.map((ln, i) => (String(i+1).padStart(3,' ') + ' | ' + ln)).join('\n');
-                resultDiv.innerText = 'Syntax/Parse error while compiling your code:\n' + String(compileErr) + '\n\nCode:\n' + numbered;
-                submitBtn.disabled = false;
-                return;
-            }
-
-            const logs = [];
-            const origConsoleLog = console.log;
-            console.log = (...args) => { try { logs.push(args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ')); } catch(e) { logs.push(String(args)); } origConsoleLog.apply(console, args); };
-
-            let executionResult = null;
+            resultDiv.innerHTML = '';
 
             try {
-                const res = await wrapped();
-                if (logs.length) resultDiv.innerText = logs.join('\n') + (res !== undefined ? '\nResult: ' + (typeof res === 'string' ? res : JSON.stringify(res)) : '');
-                else resultDiv.innerText = res === undefined ? 'Executed (no result)' : 'Result: ' + (typeof res === 'string' ? res : JSON.stringify(res));
+                const code = (window.__cmInstance && typeof window.__cmInstance.getValue === 'function') ? window.__cmInstance.getValue() : (textarea.value || '');
 
-                executionResult = { ok: true, logs: logs, result: res };
-            } catch (err) {
-                const errMsg = (err && err.stack) ? err.stack : String(err);
-                resultDiv.innerText = 'Runtime error:\n' + errMsg;
-                executionResult = { ok: false, error: errMsg, logs: logs };
+                let wrapped;
+                try {
+                    wrapped = new Function('return (async function(){\n' + code + '\n})()');
+                } catch (compileErr) {
+                    const lines = code.split(/\r?\n/);
+                    const numbered = lines.map((ln, i) => (String(i+1).padStart(3,' ') + ' | ' + ln)).join('\n');
+                    appendLine('Syntax/Parse error while compiling your code:', 'error');
+                    appendLine(String(compileErr), 'error');
+                    const blob = document.createElement('pre'); blob.className = 'result-code'; blob.textContent = numbered; resultDiv.appendChild(blob);
+                    return;
+                }
+
+                const logs = [];
+                const origConsoleLog = console.log;
+                console.log = (...args) => { try { logs.push(args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ')); } catch(e) { logs.push(String(args)); } origConsoleLog.apply(console, args); };
+
+                let executionResult = null;
+                try {
+                    const res = await wrapped();
+                    if (logs.length) { logs.forEach(l => appendLine(l, 'info')); }
+                    if (res !== undefined) appendLine('Result: ' + (typeof res === 'string' ? res : JSON.stringify(res)), 'ok');
+                    if (!logs.length && res === undefined) appendLine('Executed (no result)', 'info');
+                    executionResult = { ok: true, logs: logs, result: res };
+                } catch (err) {
+                    const errMsg = (err && err.stack) ? err.stack : String(err);
+                    appendLine('Runtime error:', 'error'); appendLine(errMsg, 'error');
+                    executionResult = { ok: false, error: errMsg, logs: logs };
+                } finally {
+                    console.log = origConsoleLog;
+                }
+
+                // Attempt to send numeric result to backend (if present)
+                try {
+                    let numericValue = null;
+                    if (executionResult) {
+                        const r = executionResult.result;
+                        if (typeof r === 'number' && !Number.isNaN(r)) numericValue = r;
+                        else if (typeof r === 'string' && r.trim() !== '' && !Number.isNaN(Number(r.trim()))) numericValue = Number(r.trim());
+                        if (numericValue === null && Array.isArray(executionResult.logs) && executionResult.logs.length) {
+                            const last = executionResult.logs[executionResult.logs.length - 1];
+                            if (last != null && !Number.isNaN(Number(String(last).trim()))) numericValue = Number(String(last).trim());
+                        }
+                    }
+
+                    if (numericValue === null) {
+                        appendLine('Not sent: could not extract numeric value to check. Return or console.log a number to send it automatically.', 'info');
+                    } else {
+                        const payload = { value: numericValue };
+                        const resp = await fetch('https://timer-backend-24n3.vercel.app/api/checkAnswerw', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                        });
+                        let parsed = null; try { parsed = await resp.json(); } catch(e){ parsed = { status: resp.status }; }
+                        appendLine('Server response: ' + JSON.stringify(parsed), 'info');
+                        if (parsed.correct) { appendLine('Correct answer!', 'ok'); }
+                        else { appendLine('Incorrect answer.', 'error'); }
+                    }
+                } catch (e) {
+                    resultDiv.innerText += '\n\nFailed to send result: ' + String(e);
+                }
             } finally {
-                console.log = origConsoleLog;
                 submitBtn.disabled = false;
             }
-
-                        (async () => {
-                            try {
-                                let numericValue = null;
-                                if (executionResult) {
-                                    const r = executionResult.result;
-                                    if (typeof r === 'number' && !Number.isNaN(r)) numericValue = r;
-                                    else if (typeof r === 'string' && r.trim() !== '' && !Number.isNaN(Number(r.trim()))) numericValue = Number(r.trim());
-                                    if (numericValue === null && Array.isArray(executionResult.logs) && executionResult.logs.length) {
-                                        const last = executionResult.logs[executionResult.logs.length - 1];
-                                        if (last != null && !Number.isNaN(Number(String(last).trim()))) numericValue = Number(String(last).trim());
-                                    }
-                                }
-
-                                if (numericValue === null) {
-                                    resultDiv.innerText += '\n\nNot sent: could not extract numeric value to check. Return or console.log a number to send it automatically.';
-
-
-                                } else {
-                                    const payload = { value: numericValue };
-                                    const resp = await fetch('https://timer-backend-24n3.vercel.app/api/checkAnswerw', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify(payload)
-                                    });
-                                    let parsed = null;
-                                    try { parsed = await resp.json(); } catch (e) { parsed = { status: resp.status }; }
-                                    resultDiv.innerText += '\n\nServer response: ' + JSON.stringify(parsed);
-                                    if (parsed.correct) {
-                                        resultDiv.innerText += '\n\nCorrect answer!';
-                                        resultDiv.style.color = 'green';
-                                    } else {
-                                        resultDiv.innerText += '\n\nIncorrect answer.';
-                                        resultDiv.style.color = 'red';
-                                    }    }
-                            } catch (e) {
-                                resultDiv.innerText += '\n\nFailed to send result: ' + String(e);
-                            }
-                        })();
         });
 });
     }
