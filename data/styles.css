@@ -101,3 +101,16 @@ body{
 .hidden{ display:none !important; }
 
 .task-result{ background:#111; color:#0f0; padding:8px; border-radius:6px; text-align:left; }
+
+/* IDE-like editor styles */
+.editor-wrap{ display:flex; border-radius:6px; overflow:hidden; border:1px solid #2b2b2b; }
+.editor-gutter{ background:#1e1e1e; color:#8a8a8a; padding:8px 6px; font-family: monospace; font-size:13px; line-height:1.45; text-align:right; user-select:none; }
+.editor-gutter div{ padding:0 6px; }
+.editor{ background:#0f1112; color:#dfe7ee; font-family: 'Fira Code', 'Consolas', 'Courier New', monospace; font-size:13px; line-height:1.45; padding:8px; width:100%; border:none; outline:none; resize:vertical; }
+.editor-toolbar{ display:flex; gap:8px; align-items:center; background:#0b0c0d; padding:6px 8px; border-radius:6px; color:#ddd; }
+.toolbar-btn{ background:#151617; color:#ddd; border:1px solid #262626; padding:6px 8px; border-radius:4px; cursor:pointer; }
+.toolbar-right{ margin-left:auto; display:flex; gap:8px; align-items:center; }
+.editor .placeholder{ color:#777; }
+
+/* small responsive adjustments */
+@media (max-width:420px){ .task-panel{ width:94%; padding:12px; } .editor-gutter{ display:none; } }

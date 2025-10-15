@@ -23,10 +23,55 @@ fetch("https://timer-backend-24n3.vercel.app/api/hello").then(res => res.json())
         taskText.className = 'task-text';
         taskText.innerText = taskT;
 
-        const input = document.createElement('textarea');
-        input.rows = 10;
-        input.className = 'task-input';
-        input.innerText = data.CommentedText;
+                // IDE-like editor: toolbar + gutter + textarea
+                const editorToolbar = document.createElement('div');
+                editorToolbar.className = 'editor-toolbar';
+                const runHint = document.createElement('div'); runHint.innerText = 'Editor'; runHint.style.fontWeight = '600'; runHint.style.color = '#fff';
+                const btnFormat = document.createElement('button'); btnFormat.className = 'toolbar-btn'; btnFormat.innerText = 'Format';
+                const btnTabSize = document.createElement('button'); btnTabSize.className = 'toolbar-btn'; btnTabSize.innerText = 'Tab: 2';
+                const toolbarRight = document.createElement('div'); toolbarRight.className = 'toolbar-right';
+                editorToolbar.appendChild(runHint); editorToolbar.appendChild(btnFormat); toolbarRight.appendChild(btnTabSize); editorToolbar.appendChild(toolbarRight);
+
+                const editorWrap = document.createElement('div'); editorWrap.className = 'editor-wrap';
+                const gutter = document.createElement('div'); gutter.className = 'editor-gutter';
+                const gutterInner = document.createElement('div'); gutter.appendChild(gutterInner);
+                const textarea = document.createElement('textarea');
+                textarea.className = 'editor task-input'; textarea.rows = 12; textarea.wrap = 'off';
+                textarea.value = data.CommentedText || '';
+                if (data.completed) {
+                    textarea.value = '// táto úloha bola dokončená\n' + textarea.value;
+                }    editorWrap.appendChild(gutter); editorWrap.appendChild(textarea);
+
+                function updateGutter() {
+                    const lines = (textarea.value.match(/\n/g) || []).length + 1;
+                    let out = '';
+                    for (let i = 1; i <= lines; i++) out += '<div>' + i + '</div>';
+                    gutterInner.innerHTML = out;
+                }
+                updateGutter();
+
+                textarea.addEventListener('scroll', () => { gutter.scrollTop = textarea.scrollTop; });
+                textarea.addEventListener('input', () => { updateGutter(); resultDiv.innerText = ''; resultDiv.style.color = '#0f0'; });
+
+                let currentTab = 2;
+                textarea.addEventListener('keydown', (e) => {
+                    if (e.key === 'Tab') {
+                        e.preventDefault();
+                        const start = textarea.selectionStart; const end = textarea.selectionEnd;
+                        const spaces = ' '.repeat(currentTab);
+                        textarea.value = textarea.value.substring(0, start) + spaces + textarea.value.substring(end);
+                        textarea.selectionStart = textarea.selectionEnd = start + spaces.length;
+                        updateGutter();
+                    }
+                });
+
+                btnTabSize.addEventListener('click', () => { currentTab = currentTab === 2 ? 4 : 2; btnTabSize.innerText = 'Tab: ' + currentTab; });
+                btnFormat.addEventListener('click', () => {
+                    // basic formatting: replace tabs with spaces and normalize indentation for blocks
+                    const lines = textarea.value.split(/\r?\n/);
+                    const formatted = lines.map(l => l.replace(/\t/g, ' '.repeat(currentTab))).join('\n');
+                    textarea.value = formatted; updateGutter();
+                });
 
         const btnRow = document.createElement('div');
         btnRow.className = 'task-btn-row';
@@ -42,8 +87,9 @@ fetch("https://timer-backend-24n3.vercel.app/api/hello").then(res => res.json())
         btnRow.appendChild(submitBtn);
         btnRow.appendChild(closeBtn);
 
-        panel.appendChild(taskText);
-        panel.appendChild(input);
+    panel.appendChild(taskText);
+    panel.appendChild(editorToolbar);
+    panel.appendChild(editorWrap);
     const resultDiv = document.createElement('pre');
     resultDiv.className = 'task-result';
     resultDiv.style.whiteSpace = 'pre-wrap';
@@ -56,7 +102,7 @@ fetch("https://timer-backend-24n3.vercel.app/api/hello").then(res => res.json())
 
         closeBtn.addEventListener('click', () => overlay.remove());
         submitBtn.addEventListener('click', async () => {
-            const code = input.value || '';
+            const code = textarea.value || '';
             resultDiv.innerText = '';
             submitBtn.disabled = true;
 
