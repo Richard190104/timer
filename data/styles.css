@@ -1,0 +1,17 @@
+body{
+    background-color: black;
+    color: white;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    height: 100vh;
+    justify-content: center;
+    align-items: center;
+}
+
+.timer-box{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    font-size: 5em;
+}
