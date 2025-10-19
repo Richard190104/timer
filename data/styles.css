@@ -110,7 +110,7 @@ body{
 /* CodeMirror specific overrides */
 .CodeMirror, .CodeMirror-scroll, .cm-s-material-darker.CodeMirror { text-align: left !important; direction: ltr !important; }
 .CodeMirror pre { text-align: left !important; white-space: pre !important; }
-.cm-container { text-align: left !important; max-height:56vh; overflow:auto; !important }
+.cm-container { text-align: left !important; max-height:56vh; overflow:auto !important; }
 .CodeMirror, .CodeMirror-scroll { max-height:56vh; overflow:auto; height: auto; }
 .CodeMirror { height: unset !important; min-height: 56vh !important; width: 100%; }
 /* Constrain the modal panel so it doesn't grow beyond the viewport */

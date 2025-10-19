@@ -23,7 +23,6 @@ fetch("https://timer-backend-24n3.vercel.app/api/hello").then(res => res.json())
         taskText.className = 'task-text';
         taskText.innerText = taskT;
 
-                // IDE-like editor: toolbar + gutter + textarea
                 const editorToolbar = document.createElement('div');
                 editorToolbar.className = 'editor-toolbar';
                 const runHint = document.createElement('div'); runHint.innerText = 'Editor'; runHint.style.fontWeight = '600'; runHint.style.color = '#fff';
@@ -34,22 +33,17 @@ fetch("https://timer-backend-24n3.vercel.app/api/hello").then(res => res.json())
                 const editorWrap = document.createElement('div'); editorWrap.className = 'editor-wrap';
                 const gutter = document.createElement('div'); gutter.className = 'editor-gutter';
                 const gutterInner = document.createElement('div'); gutter.appendChild(gutterInner);
-                // create a textarea that CodeMirror can enhance; fallback will just use the textarea
                 const textarea = document.createElement('textarea');
                 textarea.className = 'editor task-input'; textarea.rows = 12; textarea.wrap = 'off';
-                // accept several possible keys for initial commented text
                 textarea.value = (data.CommentedText + "\n" || '') ;
-                // ensure textarea is focusable in fallback
                 try { textarea.tabIndex = 0; textarea.removeAttribute('disabled'); } catch(e){}
                 if (data.completed) textarea.value = '// táto úloha bola dokončená\n' + textarea.value;
                 editorWrap.appendChild(gutter); editorWrap.appendChild(textarea);
 
-                // append editor elements to panel now so CodeMirror can attach to a textarea in the DOM
                 panel.appendChild(taskText);
                 panel.appendChild(editorToolbar);
                 panel.appendChild(editorWrap);
 
-                // small gutter updater for textarea fallback and for visual parity
                 function updateGutterForText(text) {
                     const lines = (String(text).match(/\n/g) || []).length + 1;
                     let out = '';
@@ -65,13 +59,11 @@ fetch("https://timer-backend-24n3.vercel.app/api/hello").then(res => res.json())
                     const lines = textarea.value.split(/\r?\n/);
                     const formatted = lines.map(l => l.replace(/\t/g, ' '.repeat(currentTab))).join('\n');
                     textarea.value = formatted; updateGutterForText(textarea.value);
-                    // if a CodeMirror instance exists, update it as well
                     if (window.__cmInstance && typeof window.__cmInstance.setValue === 'function') {
                         window.__cmInstance.setValue(formatted);
                     }
                 });
 
-                // attach CodeMirror (preloaded in index.html) after modal is appended so fromTextArea can find the textarea in DOM
                 let __localCmInstance = null;
                 function attachPreloadedCodeMirror() {
                     if (!window.CodeMirror) return;
@@ -81,9 +73,8 @@ fetch("https://timer-backend-24n3.vercel.app/api/hello").then(res => res.json())
                             mode: 'javascript', theme: 'material-darker', lineNumbers: true, tabSize: currentTab, indentWithTabs: false
                         });
                         __localCmInstance = cm;
-                        window.__cmInstance = cm; // quick global reference for other handlers
+                        window.__cmInstance = cm; 
                         cm.on('change', () => { updateGutterForText(cm.getValue()); });
-                        // if CM has no content but textarea does, set it
                         try { if ((!cm.getValue() || cm.getValue().trim() === '') && textarea.value) cm.setValue(textarea.value); } catch(e){}
                         try { cm.refresh && cm.refresh(); } catch(e){}
                         try { cm.setOption && cm.setOption('readOnly', false); } catch(e){}
@@ -111,7 +102,6 @@ fetch("https://timer-backend-24n3.vercel.app/api/hello").then(res => res.json())
         btnRow.appendChild(submitBtn);
         btnRow.appendChild(closeBtn);
 
-    // editor already appended above
     const resultDiv = document.createElement('pre');
     resultDiv.className = 'task-result';
     resultDiv.style.whiteSpace = 'pre-wrap';
@@ -119,7 +109,6 @@ fetch("https://timer-backend-24n3.vercel.app/api/hello").then(res => res.json())
     resultDiv.style.overflow = 'auto';
     panel.appendChild(resultDiv);
 
-    // helper: append lines with timestamp and optional styling
     function escapeHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
     function appendLine(text, kind) {
         const ts = new Date().toLocaleTimeString();
@@ -136,10 +125,8 @@ fetch("https://timer-backend-24n3.vercel.app/api/hello").then(res => res.json())
         panel.appendChild(btnRow);
         overlay.appendChild(panel);
     document.body.appendChild(overlay);
-    // try to attach preloaded CodeMirror now that the textarea is in the DOM
     try { attachPreloadedCodeMirror(); } catch(e) {}
 
-    // ensure focus and caret placement after editor attached / DOM laid out
     setTimeout(() => {
         try {
             if (window.__cmInstance && typeof window.__cmInstance.getValue === 'function') {
@@ -155,15 +142,13 @@ fetch("https://timer-backend-24n3.vercel.app/api/hello").then(res => res.json())
                 textarea.focus();
                     try { textarea.scrollLeft = 0; } catch(e){}
             }
-        } catch (e) { /* ignore focus errors */ }
+        } catch (e) { }
     }, 60);
 
         closeBtn.addEventListener('click', () => {
-            // cleanup CodeMirror instance if attached
             try { if (__localCmInstance && typeof __localCmInstance.toTextArea === 'function') { __localCmInstance.toTextArea(); } if (window.__cmInstance) delete window.__cmInstance; } catch(e){}
             overlay.remove();
         });
-        // focus the editor (CodeMirror or textarea) so the user can type immediately
         setTimeout(() => {
             try {
                 if (window.__cmInstance && typeof window.__cmInstance.focus === 'function') window.__cmInstance.focus();
@@ -190,12 +175,44 @@ fetch("https://timer-backend-24n3.vercel.app/api/hello").then(res => res.json())
                 }
 
                 const logs = [];
+                // helper to format arguments for logging (handles Error, Response, circular objects)
+                const getCircularReplacer = () => {
+                    const seen = new WeakSet();
+                    return (key, value) => {
+                        if (typeof value === 'object' && value !== null) {
+                            if (seen.has(value)) return '[Circular]';
+                            seen.add(value);
+                        }
+                        if (value instanceof Error) return { message: value.message, stack: value.stack };
+                        return value;
+                    };
+                };
+                const formatForLog = (v) => {
+                    try {
+                        if (v instanceof Error) return (v.stack || v.message || String(v));
+                        if (typeof v === 'object' && v !== null) {
+                            // Response objects: show status and statusText if possible
+                            try {
+                                if (v instanceof Response) return `Response { status: ${v.status} ${v.statusText} }`;
+                            } catch (_) {}
+                            try { return JSON.stringify(v, getCircularReplacer(), 2); } catch(e) { return String(v); }
+                        }
+                        return String(v);
+                    } catch (e) { try { return String(v); } catch(e) { return '[unserializable]'; } }
+                };
                 const origConsoleLog = console.log;
-                console.log = (...args) => { try { logs.push(args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ')); } catch(e) { logs.push(String(args)); } origConsoleLog.apply(console, args); };
+                const origConsoleError = console.error;
+                const origConsoleWarn = console.warn;
+                // capture logs, errors and warnings so they appear in the UI
+                console.log = (...args) => { try { logs.push(args.map(a => (typeof a === 'string' ? a : formatForLog(a))).join(' ')); } catch(e) { logs.push(String(args)); } origConsoleLog.apply(console, args); };
+                console.error = (...args) => { try { logs.push(args.map(a => (typeof a === 'string' ? a : formatForLog(a))).join(' ')); } catch(e) { logs.push(String(args)); } origConsoleError && origConsoleError.apply(console, args); };
+                console.warn = (...args) => { try { logs.push(args.map(a => (typeof a === 'string' ? a : formatForLog(a))).join(' ')); } catch(e) { logs.push(String(args)); } origConsoleWarn && origConsoleWarn.apply(console, args); };
 
                 let executionResult = null;
                 try {
                     const res = await wrapped();
+                    // small delay to allow any `.then()` handlers or microtasks to run and log
+                    try { await new Promise(r => setTimeout(r, 250)); } catch(e){}
                     if (logs.length) { logs.forEach(l => appendLine(l, 'info')); }
                     if (res !== undefined) appendLine('Result: ' + (typeof res === 'string' ? res : JSON.stringify(res)), 'ok');
                     if (!logs.length && res === undefined) appendLine('Executed (no result)', 'info');
@@ -205,10 +222,12 @@ fetch("https://timer-backend-24n3.vercel.app/api/hello").then(res => res.json())
                     appendLine('Runtime error:', 'error'); appendLine(errMsg, 'error');
                     executionResult = { ok: false, error: errMsg, logs: logs };
                 } finally {
-                    console.log = origConsoleLog;
+                    // restore console methods
+                    try { console.log = origConsoleLog; } catch(e){}
+                    try { console.error = origConsoleError; } catch(e){}
+                    try { console.warn = origConsoleWarn; } catch(e){}
                 }
 
-                // Attempt to send numeric result to backend (if present)
                 try {
                     let numericValue = null;
                     if (executionResult) {
