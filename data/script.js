@@ -74,6 +74,7 @@ fetch("https://timer-backend-24n3.vercel.app/api/hello").then(res => res.json())
                         });
                         __localCmInstance = cm;
                         window.__cmInstance = cm; 
+                        try { gutter.style.display = 'none'; } catch(e){}
                         cm.on('change', () => { updateGutterForText(cm.getValue()); });
                         try { if ((!cm.getValue() || cm.getValue().trim() === '') && textarea.value) cm.setValue(textarea.value); } catch(e){}
                         try { cm.refresh && cm.refresh(); } catch(e){}
@@ -147,6 +148,7 @@ fetch("https://timer-backend-24n3.vercel.app/api/hello").then(res => res.json())
 
         closeBtn.addEventListener('click', () => {
             try { if (__localCmInstance && typeof __localCmInstance.toTextArea === 'function') { __localCmInstance.toTextArea(); } if (window.__cmInstance) delete window.__cmInstance; } catch(e){}
+            try { gutter.style.display = ''; } catch(e){}
             overlay.remove();
         });
         setTimeout(() => {
