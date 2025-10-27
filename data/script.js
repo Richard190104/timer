@@ -301,7 +301,8 @@ function displayInformation() {
         { name: 'Dino Runner', id: 'Dino', script: 'data/games/dino.js' },
         { name: 'Clicker', id: 'Clicker', script: 'data/games/clicker.js' },
         { name: 'Cannon Shooter', id: 'Cannon', script: 'data/games/cannon.js' },
-        { name: 'Quiz', id: 'Quiz', script: 'data/games/quiz.js' }
+        { name: 'Quiz', id: 'Quiz', script: 'data/games/quiz.js' },
+        { name: 'Geo Dash', id: 'GeoDash', script: 'data/monthly_game/geo_dash.js' }
     ];
 
     const overlay = document.createElement('div'); overlay.className = 'info-overlay';
@@ -371,4 +372,3 @@ function playSong() {
         isPlaying = false;
     }
 }
-

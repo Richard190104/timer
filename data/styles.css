@@ -137,3 +137,9 @@ body{
 .result-line.error{ color:#ff8080; }
 .result-json{ background: #061018; padding:8px; border-radius:6px; color:#9ad3ff; overflow:auto; }
 .result-code{ background:#07121a; color:#9ad3ff; padding:8px; border-radius:6px; overflow:auto; }
+.weather-info{
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    cursor: pointer;
+}
